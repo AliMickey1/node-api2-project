@@ -44,12 +44,23 @@ router.post('/', (req, res) => {
             message: "Please provide title and contents for the post"
         })
     } else {
-        thePost.insert({ title, contents })
-        .then(({id}) => {
-            return thePost.findById(id)
+        thePost.findById(req.params.id)
+        .then(info => {
+            if(!info) {
+                res.status(404).json({
+                    message: "The post with the specified ID does not exist"
+                })
+            } else {
+                return thePost.update(req.params.id, req.body)
+            }
+        })
+        .then(data => {
+            if(data) {
+                return thePost.findById(req.params.id)
+            }
         })
         .then(post => {
-            res.status(201).json(post)
+            res.json(post)
         })
         .catch(err => {
             res.status(500).json({
@@ -63,7 +74,29 @@ router.post('/', (req, res) => {
 })
 
 router.put('/:id', (req, res) => {
-
+    const { title, contents } = req.body
+    if(!title || !contents) {
+        res.status(400).json({
+            message: "Please provide title and contents for the post"
+        })
+    } else {
+        thePost.findById(req.params.id)
+        .then(found => {
+            const updated = thePost.update(
+                req.params.title,
+                req.params.contents,
+            )
+            res.status(200).json(updated)
+            console.log(updated)
+        })
+        .catch (err => {
+            res.status(500).json({
+                message: "The post information could not be modified",
+                err: err.message,
+                stack: err.stack,
+            })
+        })
+    }
 })
 
 router.delete('/:id', async (req, res) => {
@@ -75,6 +108,10 @@ router.delete('/:id', async (req, res) => {
             })
         } else {
             const deletePost = await thePost.remove(possible)
+            res.json(possible)
+            res.status(200).json({
+                message: `Removed ${possible}`
+            })
         }
     }
     catch(err) {
@@ -86,7 +123,26 @@ router.delete('/:id', async (req, res) => {
     }
 })
 
-router.get('/:id/comments', (req, res) => {
+router.get('/:id/comments', async (req, res) => {
+    try {
+        const post = await this.post.findById(req.params.id)
+        console.log(post)
+        if(!post) {
+            res.status(404).json({
+                message: "The post with the specified ID does not exist"
+            })
+        } else {
+            const messages = await post.findPostComments(req.params.id)
+            res.json(messages)
+        }
+    }
+    catch(err) {
+        res.status(500).json({
+            message: "The comments information could not be retrieved",
+            err: err.message,
+            stack: err.stack,
+        })
+    }
 
 })
 
